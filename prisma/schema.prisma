@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -78,6 +75,8 @@ model purchase {
   tax             Int
   price_after_tax Int
   status          PurchaseStatus
+  outlet_id       String
+  outlet          outlet            @relation(fields: [outlet_id], references: [id])
   member_id       String?
   member          member?           @relation(fields: [member_id], references: [id])
   created_at      DateTime          @default(now())
@@ -95,17 +94,50 @@ model purchase_detail {
   subtotal    Int
 }
 
+model account {
+  id         String      @unique @default(uuid())
+  name       String
+  phone      String      @unique
+  email      String      @unique
+  accountId  String?
+  member     member?
+  cashier    cashier?
+  account    AccountType
+  created_at DateTime    @default(now())
+  updated_at DateTime    @updatedAt
+}
+
 model member {
   id         String     @unique @default(uuid())
-  name       String
-  phone      String     @unique
-  email      String     @unique
+  account_id String     @unique
+  account    account    @relation(fields: [account_id], references: [id])
   address    String?
   city       String?
   province   String?
   created_at DateTime   @default(now())
   updated_at DateTime   @updatedAt
   purchase   purchase[]
+}
+
+model cashier {
+  id         String   @unique @default(uuid())
+  account_id String   @unique
+  account    account  @relation(fields: [account_id], references: [id])
+  password   String
+  outlet_id  String
+  outlet     outlet   @relation(fields: [outlet_id], references: [id])
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model outlet {
+  id                             String                           @unique @default(uuid())
+  name                           String
+  cashier                        cashier[]
+  purchase                       purchase[]
+  report_hourly_by_food_category report_hourly_by_food_category[]
+  report_daily_by_food_category  report_daily_by_food_category[]
+  report_weekly_by_food_category report_weekly_by_food_category[]
 }
 
 model report_hourly_by_food_category {
@@ -117,6 +149,8 @@ model report_hourly_by_food_category {
   total_net             Int
   total_tax             Int
   total_price_after_tax Int
+  outlet_id             String
+  outlet                outlet        @relation(fields: [outlet_id], references: [id])
   created_at            DateTime      @default(now())
   updated_at            DateTime      @updatedAt
 }
@@ -130,6 +164,8 @@ model report_daily_by_food_category {
   total_net             Int
   total_tax             Int
   total_price_after_tax Int
+  outlet_id             String
+  outlet                outlet        @relation(fields: [outlet_id], references: [id])
   created_at            DateTime      @default(now())
   updated_at            DateTime      @updatedAt
 }
@@ -144,6 +180,8 @@ model report_weekly_by_food_category {
   total_net             Int
   total_tax             Int
   total_price_after_tax Int
+  outlet_id             String
+  outlet                outlet        @relation(fields: [outlet_id], references: [id])
   created_at            DateTime      @default(now())
   updated_at            DateTime      @updatedAt
 }
@@ -159,4 +197,9 @@ enum PurchaseStatus {
   PENDING
   FAIL
   DONE
+}
+
+enum AccountType {
+  MEMBER
+  CASHIER
 }

@@ -1,95 +1,108 @@
-class Player {
-  private dice: number[];
-  private points: number;
-
-  constructor(private id: number, private totalDice: number) {
-    this.dice = Array(totalDice).fill(1);
-    this.points = 0;
-  }
-
-  public rollDice() {
-    this.dice = this.dice.map(() => Math.floor(Math.random() * 6) + 1);
-  }
-
-  public evaluateAndPassDiceToNextPlayer(nextPlayer: Player) {
-    for (let i = 0; i < this.dice.length; i++) {
-      if (this.dice[i] === 6) {
-        this.points++;
-        this.dice.splice(i, 1);
-        i--;
-      } else if (this.dice[i] === 1) {
-        nextPlayer.receiveDice([1]);
-        this.dice.splice(i, 1);
-        i--;
-      }
-    }
-  }
-
-  public receiveDice(dice: number[]) {
-    this.dice = this.dice.concat(dice);
-  }
-
-  public hasDiceRemaining(): boolean {
-    return this.dice.length > 0;
-  }
-
-  public getPoints(): number {
-    return this.points;
-  }
-
-  public getId(): number {
-    return this.id;
-  }
-
-  public getDice(): number[] {
-    return this.dice;
-  }
+interface Player {
+  dice: number;
+  name: number;
+  score: number;
 }
 
-function playDiceGame(numPlayers: number, numDice: number) {
-  let players: Player[] = [];
-  for (let i = 0; i < numPlayers; i++) {
-    players.push(new Player(i + 1, numDice));
+function rollTheDice(numDice: number) {
+  const rolls: number[] = [];
+  for (let i = 0; i < numDice; i++) {
+    rolls.push(Math.floor(Math.random() * 6) + 1);
+  }
+  return rolls;
+}
+
+function playDiceGame(totalPlayer: number, totalDice: number) {
+  if (totalPlayer < 0) {
+    throw new Error("Number of players must be greater than 0");
   }
 
-  let round = 1;
-  while (players.length > 1) {
-    console.log(`Turn ${round} roll the dice:`);
-    players.forEach((player) => {
-      if (player.hasDiceRemaining()) {
-        player.rollDice();
+  if (totalDice < 0) {
+    throw new Error("Number of dice units must be greater than 0");
+  }
+
+  console.log("\n========== [START GAME] ==========\n");
+  let playerDice: Player[] = [];
+  for (let i = 1; i <= totalPlayer; i++) {
+    playerDice.push({
+      dice: totalDice,
+      name: i + 1,
+      score: 0,
+    });
+  }
+
+  let round = 0;
+
+  while (playerDice.filter((player) => player.dice > 0).length > 1) {
+    round++;
+
+    if (round > 1) {
+      console.log("\n===================================\n");
+      console.log(`Turn ${round} roll the dice:`);
+    }
+
+    playerDice.forEach((player, index) => {
+      if (player.dice > 0) {
+        const rolls = rollTheDice(player.dice);
         console.log(
-          `Player #${player.getId()} (${player.getPoints()}): ${player
-            .getDice()
-            .join(",")}`
+          `Player #${player.name} (${player.score}): ${rolls.join(", ")}`
         );
+
+        for (let i = 0; i < rolls.length; i++) {
+          if (rolls[i] === 6) {
+            // If dice is 6, go to next player
+            // Dont use players to prevent unlimited loop
+            playerDice[index] = { ...player, score: player.score + 1 };
+          } else if (rolls[i] === 1) {
+            // If dice is 1, next player will get the 1 point
+            const nextPlayer = (index + 1) % totalPlayer;
+            playerDice[nextPlayer].dice++;
+          } else {
+            rolls[i]--;
+          }
+        }
+
+        // Dont use players to prevent unlimited loop
+        playerDice[index] = {
+          ...player,
+          dice: rolls.filter((roll) => roll > 1).length,
+        };
       }
     });
 
     console.log("After evaluation:");
-    players.forEach((player) => {
-      if (player.hasDiceRemaining()) {
-        const nextPlayer = players[(player.getId() % numPlayers) - 1];
-        player.evaluateAndPassDiceToNextPlayer(nextPlayer);
-        console.log(
-          `Player #${player.getId()} (${player.getPoints()}): ${player
-            .getDice()
-            .join(",")}`
-        );
-      }
+    playerDice.forEach((player) => {
+      console.log(
+        `Player #${player.name} (${player.score}): ${
+          player.dice > 0
+            ? player.dice
+            : "- (Stop playing because it has no dice)"
+        }`
+      );
     });
-
-    players = players.filter((player) => player.hasDiceRemaining());
-    round++;
   }
 
-  const winningPlayer = players[0];
-  console.log(
-    `Game ends because only player #${winningPlayer.getId()} has dice.`
+  console.log("\n========== [END OF GAME] ==========\n");
+  const remainingPlayer = playerDice.findIndex((player) => player.dice > 0);
+  if (remainingPlayer !== -1) {
+    console.log(
+      `Game ends because only player #${playerDice[remainingPlayer].name} has dice.`
+    );
+  }
+  const maxScore = Math.max(...playerDice.map((player) => player.score));
+  const winningPlayers = playerDice.filter(
+    (player) => player.score === maxScore
   );
+
   console.log(
-    `Game won by player #${winningPlayer.getId()} with ${winningPlayer.getPoints()} points.`
+    `Game won by player(s) ${winningPlayers.map(
+      (player) => `#${player.name} (Score: ${player.score})`
+    )} because they have the highest score.`
   );
+  console.log("\n========== [END OF GAME] ==========\n");
 }
 
-playDiceGame(3, 4);
+const totalPlayer = 3;
+const totalDice = 4;
+
+playDiceGame(totalPlayer, totalDice);
