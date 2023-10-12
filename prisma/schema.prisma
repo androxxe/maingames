@@ -1,0 +1,162 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model inventory {
+  id                String          @unique @default(uuid())
+  raw_material_id   String
+  raw_material      raw_material    @relation(fields: [raw_material_id], references: [id])
+  quantity          Int
+  reorder_threshold Int
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+  inventory_log     inventory_log[]
+}
+
+model inventory_log {
+  id           String    @unique @default(uuid())
+  inventory_id String
+  inventory    inventory @relation(fields: [inventory_id], references: [id])
+  quantity     Int
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+}
+
+model raw_material {
+  id                String              @unique @default(uuid())
+  name              String
+  estimated_price   Int
+  unit              RawMaterialUnitEnum
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+  food_raw_material food_raw_material[]
+  inventory         inventory[]
+}
+
+model food_raw_material {
+  id              String       @unique @default(uuid())
+  food_id         String
+  food            food         @relation(fields: [food_id], references: [id])
+  raw_material_id String
+  raw_material    raw_material @relation(fields: [raw_material_id], references: [id])
+  quantity        Int
+}
+
+model food_category {
+  id                             String                           @unique @default(uuid())
+  name                           String
+  food                           food[]
+  report_hourly_by_food_category report_hourly_by_food_category[]
+  report_daily_by_food_category  report_daily_by_food_category[]
+  report_weekly_by_food_category report_weekly_by_food_category[]
+}
+
+model food {
+  id                String              @unique @default(uuid())
+  food_category_id  String
+  food_category     food_category       @relation(fields: [food_category_id], references: [id])
+  name              String
+  price             Int
+  food_raw_material food_raw_material[]
+}
+
+model purchase {
+  id              String            @unique @default(uuid())
+  invoice_no      String            @unique
+  purchase_detail purchase_detail[]
+  total_price     Int
+  total_discount  Int
+  total_net       Int
+  tax             Int
+  price_after_tax Int
+  status          PurchaseStatus
+  member_id       String?
+  member          member?           @relation(fields: [member_id], references: [id])
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+}
+
+model purchase_detail {
+  id          String   @unique @default(uuid())
+  purchase_id String
+  purchase    purchase @relation(fields: [purchase_id], references: [id])
+  food_id     String
+  price       Int
+  discount    Int
+  quantity    Int
+  subtotal    Int
+}
+
+model member {
+  id         String     @unique @default(uuid())
+  name       String
+  phone      String     @unique
+  email      String     @unique
+  address    String?
+  city       String?
+  province   String?
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+  purchase   purchase[]
+}
+
+model report_hourly_by_food_category {
+  id                    String        @unique @default(uuid())
+  datetime              DateTime      @db.Timestamptz()
+  food_category_id      String
+  food_category         food_category @relation(fields: [food_category_id], references: [id])
+  total_discount        Int
+  total_net             Int
+  total_tax             Int
+  total_price_after_tax Int
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @updatedAt
+}
+
+model report_daily_by_food_category {
+  id                    String        @unique @default(uuid())
+  date                  DateTime      @db.Date
+  food_category_id      String
+  food_category         food_category @relation(fields: [food_category_id], references: [id])
+  total_discount        Int
+  total_net             Int
+  total_tax             Int
+  total_price_after_tax Int
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @updatedAt
+}
+
+model report_weekly_by_food_category {
+  id                    String        @unique @default(uuid())
+  start_date            DateTime      @db.Date
+  end_date              DateTime      @db.Date
+  food_category_id      String
+  food_category         food_category @relation(fields: [food_category_id], references: [id])
+  total_discount        Int
+  total_net             Int
+  total_tax             Int
+  total_price_after_tax Int
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @updatedAt
+}
+
+enum RawMaterialUnitEnum {
+  KG
+  GRAM
+  OZ
+  LITER
+}
+
+enum PurchaseStatus {
+  PENDING
+  FAIL
+  DONE
+}
